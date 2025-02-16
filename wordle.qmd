@@ -1,0 +1,91 @@
+---
+title: "exercise-04"
+format: html
+editor: visual
+---
+
+```{r}
+library(readr)
+```
+
+```{r}
+# Create a function: load_dictionary
+load_dictionary <- function(filename) {
+  read_delim(filename, delim = "\t")
+}
+
+# Load two dataset
+valid_list <- load_dictionary("https://raw.githubusercontent.com/difiore/ada-datasets/refs/heads/main/collins-scrabble-words-2019.txt")
+solution_list <- load_dictionary("https://raw.githubusercontent.com/difiore/ada-datasets/refs/heads/main/google-10000-english-usa-no-swears.txt")
+
+```
+
+```{r}
+# Winnow variable solution_list to only include words in valid_list
+solution_list <- as.data.frame(intersect(solution_list$words, valid_list$words))
+colnames(solution_list) = "words"
+```
+
+```{r}
+# Randomly picking a 5-letter word
+pick_solution <- function(i) {
+  subset <- i[nchar(i$words) ==5, ]
+  word <- sample(subset, 1)
+  split <- strsplit(word, split = "")[[1]]
+}
+solution <- pick_solution(solution_list)
+```
+
+```{r}
+evaluate_guess <- function(guess, solution) {
+  input <- strsplit(guess, split = "")[[1]]
+  feedback <- rep("-", 5)
+  for (i in 1:5) {
+    if (guess[i] == solution[i]) {
+      feedback[i] <- "*"
+    }
+  }
+  
+  for (i in 1:5) {
+    if (feedback[i] == "-" && guess[i] %in% solution) {
+      feedback[i] <- "+"
+    } 
+  }
+  return(feedback)
+}
+
+play_wordle <- function(solution, valid_list, num_guesses = 6) {
+  previousGuesses <- data.frame(guess = character(), feedback = character())
+  cat("You have", num_guesses, "chances to guess a word of length", length(solution), "\n")
+  cat("Letters left:", LETTERS)
+  
+  for (i in 1:num_guesses) {
+    myGuess <- readline("Enter guess here, then press <enter>: ")
+    myGuess <- toupper(myGuess)
+    if(nchar(myGuess) != 5 || !(myGuess %in% valid_list$words)) {
+      cat("Invalid Guess")
+      next
+    }
+    myGuess <- strsplit(myGuess, split = "")[[1]]
+    feedback <- evaluate_guess(myGuess, solution)
+    previousGuesses <- rbind(previousGuesses, data.frame(guess = paste(myGuess, collapse = ""), feedback = paste(feedback, collapse = "")))
+
+    if (all(feedback == "*")) {
+      cat("You won \n")
+      print(previousGuesses)
+      break
+    } else {
+    
+    cat("Feedback: ", feedback, "\n")
+    letters_left <- setdiff(LETTERS, myGuess)
+    cat("Letters left: ", letters_left)
+    }
+  }
+  if (!all(feedback == "*")) {
+  cat("You lose. The correct word is", paste(solution, collapse = ''), "\n")
+  print(previousGuesses)
+  }
+}
+
+play_wordle(solution, valid_list)
+```
